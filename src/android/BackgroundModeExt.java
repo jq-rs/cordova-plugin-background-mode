@@ -163,22 +163,24 @@ public class BackgroundModeExt extends CordovaPlugin {
     private void disableWebViewOptimizations() {
         Thread thread = new Thread(){
             public void run() {
-                try {
-                    Thread.sleep(1000);
-                    getApp().runOnUiThread(() -> {
-                        View view = webView.getEngine().getView();
-
-                        try {
-                            Class.forName("org.crosswalk.engine.XWalkCordovaView")
-                                 .getMethod("onShow")
-                                 .invoke(view);
-                        } catch (Exception e){
-                            view.dispatchWindowVisibilityChanged(View.VISIBLE);
-                        }
-                    });
-                } catch (InterruptedException e) {
-                    // do nothing
-                }
+				do {
+					try {
+						Thread.sleep(300000);
+						getApp().runOnUiThread(() -> {
+							View view = webView.getEngine().getView();
+							view.dispatchWindowVisibilityChanged(View.VISIBLE);
+						});
+						Thread.sleep(1000);
+						getApp().runOnUiThread(() -> {
+							View view = webView.getEngine().getView();
+							view.dispatchWindowVisibilityChanged(View.INVISIBLE);
+							
+						});
+					} catch (InterruptedException e) {
+						// do nothing
+					}
+				}
+				while(true);
             }
         };
 
