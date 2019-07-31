@@ -165,12 +165,12 @@ public class BackgroundModeExt extends CordovaPlugin {
             public void run() {
 				do {
 					try {
-						Thread.sleep(300000);
+						Thread.sleep(120000);
 						getApp().runOnUiThread(() -> {
 							View view = webView.getEngine().getView();
 							view.dispatchWindowVisibilityChanged(View.VISIBLE);
 						});
-						Thread.sleep(1000);
+						Thread.sleep(500);
 						getApp().runOnUiThread(() -> {
 							View view = webView.getEngine().getView();
 							view.dispatchWindowVisibilityChanged(View.INVISIBLE);
