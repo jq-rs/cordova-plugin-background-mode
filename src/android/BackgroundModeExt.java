@@ -171,7 +171,6 @@ public class BackgroundModeExt extends CordovaPlugin {
 							int visibility = view.getVisibility();
 							if(View.VISIBLE != visibility) {
 								view.dispatchWindowVisibilityChanged(View.VISIBLE);
-								Thread.sleep(10);
 								view.dispatchWindowVisibilityChanged(visibility);
 							}
 						});
