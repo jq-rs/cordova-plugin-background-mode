@@ -177,6 +177,19 @@ public class BackgroundModeExt extends CordovaPlugin {
 					} catch (InterruptedException e) {
 						break;
 					}
+					try {
+						Thread.sleep(120000);
+						getApp().runOnUiThread(() -> {
+							View view = webView.getEngine().getView();
+							int visibility = view.getVisibility();
+							if(View.VISIBLE != visibility) {
+								view.dispatchWindowVisibilityChanged(View.VISIBLE);
+								view.dispatchWindowVisibilityChanged(visibility);
+							}
+						});
+					} catch (InterruptedException e) {
+						break;
+					}
 				}
 				while(true);
             }
