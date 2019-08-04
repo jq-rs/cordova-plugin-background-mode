@@ -123,7 +123,7 @@ public class ForegroundService extends Service {
      * Put the service in a foreground state to prevent app from being killed
      * by the OS.
      */
-    @SuppressLint("WakelockTimeout")
+    //@SuppressLint("WakelockTimeout")
     private void keepAwake()
     {
         JSONObject settings = BackgroundMode.getSettings();
@@ -133,12 +133,12 @@ public class ForegroundService extends Service {
             startForeground(NOTIFICATION_ID, makeNotification());
         }
 
-        PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
+        //PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
 
-        wakeLock = pm.newWakeLock(
-                PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+        //wakeLock = pm.newWakeLock(
+        //        PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
 
-        wakeLock.acquire();
+        //wakeLock.acquire();
     }
 
     /**
@@ -149,10 +149,10 @@ public class ForegroundService extends Service {
         stopForeground(true);
         getNotificationManager().cancel(NOTIFICATION_ID);
 
-        if (wakeLock != null) {
-            wakeLock.release();
-            wakeLock = null;
-        }
+        //if (wakeLock != null) {
+        //    wakeLock.release();
+        //    wakeLock = null;
+        //}
     }
 
     /**
