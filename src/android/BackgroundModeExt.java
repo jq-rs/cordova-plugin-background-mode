@@ -70,6 +70,7 @@ import android.app.PendingIntent;
 public class BackgroundModeExt extends CordovaPlugin {
 
     // To keep the device awake
+	private PowerManager.WakeLock wakeLock;
     private boolean setAlarm = false;
 
     /**
