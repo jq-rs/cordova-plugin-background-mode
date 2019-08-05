@@ -60,6 +60,9 @@ import static android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD;
 import static android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED;
 import static android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+
 /**
  * Implements extended functions around the main purpose
  * of infinite execution in the background.
@@ -67,7 +70,7 @@ import static android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
 public class BackgroundModeExt extends CordovaPlugin {
 
     // To keep the device awake
-    private PowerManager.WakeLock wakeLock;
+    private boolean setAlarm = false;
 
     /**
      * Executes the request.
@@ -160,28 +163,31 @@ public class BackgroundModeExt extends CordovaPlugin {
     /**
      * Enable GPS position tracking while in background.
      */
-    private void disableWebViewOptimizations() {
+    private void disableWebViewOptimizations() {	
+		setAlarm = true;
         Thread thread = new Thread(){
             public void run() {
 				do {
+					alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+					Intent intent = new Intent(context, AlarmReceiver.class);
+					alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+		
+					alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+														SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
 					try {
 						Thread.sleep(120000);
-						getApp().runOnUiThread(() -> {
-							View view = webView.getEngine().getView();
-							int visibility = view.getVisibility();
-							if(View.VISIBLE != visibility) {
-								view.dispatchWindowVisibilityChanged(View.VISIBLE);
-								view.dispatchWindowVisibilityChanged(visibility);
-							}
-						});
 					} catch (InterruptedException e) {
 						break;
 					}
 				}
-				while(true);
+				while(setAlarm);
             }
         };
         thread.start();
+    }
+	
+	private void enableWebViewOptimizations() {	
+		setAlarm = false;
     }
 
     /**
