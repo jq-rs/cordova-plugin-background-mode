@@ -35,6 +35,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
 import android.view.View;
+import de.appplant.cordova.plugin.background.AlarmReceiver;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -60,8 +61,14 @@ import static android.view.WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD;
 import static android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED;
 import static android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON;
 
+import android.os.SystemClock;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import  	android.util.Log;
+
+
+
 
 /**
  * Implements extended functions around the main purpose
@@ -72,6 +79,9 @@ public class BackgroundModeExt extends CordovaPlugin {
     // To keep the device awake
 	private PowerManager.WakeLock wakeLock;
     private boolean setAlarm = false;
+	private AlarmManager alarmMgr;
+	private PendingIntent alarmIntent;
+
 
     /**
      * Executes the request.
@@ -166,25 +176,13 @@ public class BackgroundModeExt extends CordovaPlugin {
      */
     private void disableWebViewOptimizations() {	
 		setAlarm = true;
-        Thread thread = new Thread(){
-            public void run() {
-				do {
-					alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
-					Intent intent = new Intent(context, AlarmReceiver.class);
-					alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
-		
-					alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-														SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
-					try {
-						Thread.sleep(120000);
-					} catch (InterruptedException e) {
-						break;
-					}
-				}
-				while(setAlarm);
-            }
-        };
-        thread.start();
+		Activity context = cordova.getActivity();
+		alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+		Intent intent = new Intent(context, AlarmReceiver.class);
+		alarmIntent = PendingIntent.getBroadcast(context, 101, intent, 0);
+		Log.d("MlesAlarm", "Setting alarm");
+		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
     }
 	
 	private void enableWebViewOptimizations() {	
