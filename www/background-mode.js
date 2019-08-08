@@ -165,6 +165,32 @@ exports.disableWebViewOptimizations = function()
 };
 
 /**
+ * Enable GPS-tracking in background (Android).
+ *
+ * @return [ Void ]
+ */
+exports.enableWake = function()
+{
+    if (this._isAndroid)
+    {
+        cordova.exec(null, null, 'BackgroundModeExt', 'enableWake', []);
+    }
+};
+
+/**
+ * Enable GPS-tracking in background (Android).
+ *
+ * @return [ Void ]
+ */
+exports.disableWake = function()
+{
+    if (this._isAndroid)
+    {
+        cordova.exec(null, null, 'BackgroundModeExt', 'disableWake', []);
+    }
+};
+
+/**
  * Disables battery optimazation mode for the app.
  *
  * @return [ Void ]

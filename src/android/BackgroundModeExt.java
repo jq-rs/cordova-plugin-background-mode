@@ -81,7 +81,8 @@ public class BackgroundModeExt extends CordovaPlugin {
     private boolean setAlarm = false;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
-
+    // Partial wake lock to prevent the app from going to sleep when locked
+    private PowerManager.WakeLock wakeLock;
 
     /**
      * Executes the request.
@@ -106,6 +107,12 @@ public class BackgroundModeExt extends CordovaPlugin {
                 break;
             case "webview":
                 disableWebViewOptimizations();
+                break;
+			case "enableWake":
+                enablePartialWake();
+                break;
+			case "disableWake":
+                disablePartialWake();
                 break;
             case "appstart":
                 openAppStart(args.opt(0));
@@ -189,6 +196,23 @@ public class BackgroundModeExt extends CordovaPlugin {
 		setAlarm = false;
     }
 
+    private void enablePartialWake() {	
+	    PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
+
+        wakeLock = pm.newWakeLock(
+                PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+
+        wakeLock.acquire();
+    }
+	
+	private void disablePartialWake() {	
+        if (wakeLock != null) {
+            wakeLock.release();
+            wakeLock = null;
+        }
+    }
+
+	
     /**
      * Disables battery optimizations for the app.
      * Requires permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS to function.

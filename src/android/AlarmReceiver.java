@@ -21,6 +21,7 @@ import static android.net.wifi.WifiManager.WIFI_MODE_FULL;
 
 public class AlarmReceiver extends BroadcastReceiver {
 	private PowerManager.WakeLock wakeLock;
+	private WifiLock wfl;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
 	
@@ -35,7 +36,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
         wakeLock.acquire();
 		
-		WifiLock wfl = wm.createWifiLock(WifiManager.WIFI_MODE_FULL, "backgroundmode:sync_all_wifi");
+		wfl = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
 		wfl.acquire();
 				
 		alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
@@ -47,6 +48,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
 
 		wfl.release();
+		wfl = null;
 		wakeLock.release();
         wakeLock = null;
 		Log.d("MlesAlarm", "Got and released wakelock and wifilock");
