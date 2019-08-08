@@ -52,6 +52,7 @@ import static android.R.string.ok;
 import static android.R.style.Theme_DeviceDefault_Light_Dialog;
 import static android.content.Context.ACTIVITY_SERVICE;
 import static android.content.Context.POWER_SERVICE;
+import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 import static android.content.pm.PackageManager.MATCH_DEFAULT_ONLY;
 import static android.os.Build.VERSION.SDK_INT;
 import static android.os.Build.VERSION_CODES.M;
@@ -81,8 +82,6 @@ public class BackgroundModeExt extends CordovaPlugin {
     private boolean setAlarm = false;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
-    // Partial wake lock to prevent the app from going to sleep when locked
-    private PowerManager.WakeLock wakeLock;
 
     /**
      * Executes the request.
@@ -182,22 +181,17 @@ public class BackgroundModeExt extends CordovaPlugin {
      * Enable GPS position tracking while in background.
      */
     private void disableWebViewOptimizations() {	
-		setAlarm = true;
 		Activity context = cordova.getActivity();
 		alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 		Intent intent = new Intent(context, AlarmReceiver.class);
 		alarmIntent = PendingIntent.getBroadcast(context, 101, intent, 0);
-		Log.d("MlesAlarm", "Setting alarm");
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
-    }
-	
-	private void enableWebViewOptimizations() {	
-		setAlarm = false;
+										   SystemClock.elapsedRealtime() + 150 * 1000, alarmIntent);
     }
 
-    private void enablePartialWake() {	
-	    PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
+    private void enablePartialWake() {
+		Activity context = cordova.getActivity();
+	    PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
 
         wakeLock = pm.newWakeLock(
                 PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
