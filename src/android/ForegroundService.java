@@ -41,7 +41,6 @@ import android.net.wifi.WifiManager.WifiLock;
 
 import org.json.JSONObject;
 
-import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
 import static android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
 
 /**
@@ -68,8 +67,6 @@ public class ForegroundService extends Service {
     // Binder given to clients
     private final IBinder binder = new ForegroundBinder();
 
-    // Partial wake lock to prevent the app from going to sleep when locked
-    private PowerManager.WakeLock wakeLock;
 	private WifiLock wfl;
 
     /**
@@ -137,18 +134,11 @@ public class ForegroundService extends Service {
             startForeground(NOTIFICATION_ID, makeNotification());
         }		
 		
-		//if(wfl == null) {
-		//	WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
-		//	wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
-		//	wfl.acquire();
-		//}
-				
-		//PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
-
-        //wakeLock = pm.newWakeLock(
-        //        PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
-
-        //wakeLock.acquire();
+		if(wfl == null) {
+			WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+			wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+			wfl.acquire();
+		}
     }
 
     /**
@@ -159,15 +149,10 @@ public class ForegroundService extends Service {
         stopForeground(true);
         getNotificationManager().cancel(NOTIFICATION_ID);
 
-		//if(wfl != null) {
-		//	wfl.release();
-		//	wfl = null;
-        //}
-		
-        //if (wakeLock != null) {
-        //    wakeLock.release();
-        //    wakeLock = null;
-        //}
+		if(wfl != null) {
+			wfl.release();
+			wfl = null;
+        }
     }
 
     /**
