@@ -21,9 +21,9 @@ import static android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
 
 public class AlarmReceiver extends BroadcastReceiver {
 	private PowerManager.WakeLock wakeLock;
-	private WifiLock wfl;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
+	private WifiLock wfl;
 	
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -42,7 +42,7 @@ public class AlarmReceiver extends BroadcastReceiver {
 
 		alarmIntent = PendingIntent.getBroadcast(context, 101, nextIntent, 0);
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + 150 * 1000, alarmIntent);
+										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
 
 		wfl.release();
 		wfl = null;

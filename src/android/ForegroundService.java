@@ -36,10 +36,13 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.app.NotificationChannel;
+import android.net.wifi.WifiManager;
+import android.net.wifi.WifiManager.WifiLock;
 
 import org.json.JSONObject;
 
 import static android.os.PowerManager.PARTIAL_WAKE_LOCK;
+import static android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
 
 /**
  * Puts the service in a foreground state, where the system considers it to be
@@ -52,7 +55,7 @@ public class ForegroundService extends Service {
     public static final int NOTIFICATION_ID = -574543954;
 
     // Default title of the background notification
-    private static final String NOTIFICATION_TITLE =
+    private static final String NOTIFICATION_TITLE =	
             "App is running in background";
 
     // Default text of the background notification
@@ -67,6 +70,7 @@ public class ForegroundService extends Service {
 
     // Partial wake lock to prevent the app from going to sleep when locked
     private PowerManager.WakeLock wakeLock;
+	private WifiLock wfl;
 
     /**
      * Allow clients to call on to the service.
@@ -131,9 +135,14 @@ public class ForegroundService extends Service {
 
         if (!isSilent) {
             startForeground(NOTIFICATION_ID, makeNotification());
-        }
-
-        //PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
+        }		
+		
+		if(wfl == null) {
+			wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+			wfl.acquire();
+		}
+				
+		//PowerManager pm = (PowerManager)getSystemService(POWER_SERVICE);
 
         //wakeLock = pm.newWakeLock(
         //        PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
@@ -149,6 +158,11 @@ public class ForegroundService extends Service {
         stopForeground(true);
         getNotificationManager().cancel(NOTIFICATION_ID);
 
+		if(wfl != null) {
+			wfl.release();
+			wfl = null;
+        }
+		
         //if (wakeLock != null) {
         //    wakeLock.release();
         //    wakeLock = null;

@@ -186,7 +186,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 		Intent intent = new Intent(context, AlarmReceiver.class);
 		alarmIntent = PendingIntent.getBroadcast(context, 101, intent, 0);
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + 150 * 1000, alarmIntent);
+										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
     }
 
     private void enablePartialWake() {
