@@ -30,12 +30,13 @@ import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.PowerManager;
 import android.view.View;
-import de.appplant.cordova.plugin.background.AlarmReceiver;
+//import de.appplant.cordova.plugin.background.AlarmReceiver;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -68,6 +69,11 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import  	android.util.Log;
 
+import android.net.wifi.WifiManager;
+import android.net.wifi.WifiManager.WifiLock;
+
+import static android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
+
 
 
 
@@ -79,10 +85,54 @@ public class BackgroundModeExt extends CordovaPlugin {
 
     // To keep the device awake
 	private PowerManager.WakeLock wakeLock;
-    private boolean setAlarm = false;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
+	private int prevVisibility;
+	final String RECEIVER = ".AlarmReceiver";
+	final int TIMEOUT = 120 * 1000;
 
+	
+	private class AlarmReceiver extends BroadcastReceiver {
+		private PowerManager.WakeLock wakeLock;
+		private AlarmManager alarmMgr;
+		private PendingIntent alarmIntent;
+		private WifiLock wfl = null;
+
+	
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
+			WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+
+			Log.d("MlesAlarm", "Acquiring locks");
+			if(null == wakeLock) {
+				wakeLock = pm.newWakeLock(
+						PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+				
+				wakeLock.acquire();
+			}
+			if(null == wfl) {			
+				wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+				wfl.acquire();
+			}
+			
+			webView.loadUrl("javascript:sendEmptyJoin()");
+		
+			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+
+			Intent newIntent = new Intent(RECEIVER);
+		
+			alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+			alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
+										   
+			Log.d("MlesAlarm", "Releasing acquired locks");
+			wfl.release();
+			wfl = null;
+			wakeLock.release();
+			wakeLock = null;				   
+		}
+	}
     /**
      * Executes the request.
      *
@@ -183,23 +233,34 @@ public class BackgroundModeExt extends CordovaPlugin {
     private void disableWebViewOptimizations() {	
 		Activity context = cordova.getActivity();
 		alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
-		Intent intent = new Intent(context, AlarmReceiver.class);
-		alarmIntent = PendingIntent.getBroadcast(context, 101, intent, 0);
+
+		IntentFilter intentFilter = new IntentFilter(RECEIVER);
+		
+		AlarmReceiver mReceiver = new AlarmReceiver();
+		context.registerReceiver(mReceiver, intentFilter);
+		
+		Intent intent = new Intent(RECEIVER);
+		
+		alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + 120 * 1000, alarmIntent);
+										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
+										   
+		Log.d("MlesAlarm", "Starting alarm");
     }
 
     private void enablePartialWake() {
 		Activity context = cordova.getActivity();
 	    PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
 
-        wakeLock = pm.newWakeLock(
-                PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+		if(null == wakeLock) {
+			wakeLock = pm.newWakeLock(
+					PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
 
-        wakeLock.acquire();
+			wakeLock.acquire();
+		}		
     }
 	
-	private void disablePartialWake() {	
+	private void disablePartialWake() {		
         if (wakeLock != null) {
             wakeLock.release();
             wakeLock = null;
