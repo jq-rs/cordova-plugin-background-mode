@@ -133,6 +133,12 @@ public class ForegroundService extends Service {
         if (!isSilent) {
             startForeground(NOTIFICATION_ID, makeNotification());
         }		
+		
+		if(wfl == null) {
+			WifiManager wm = (WifiManager)getSystemService(Context.WIFI_SERVICE);
+			wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+			wfl.acquire();
+		}	
     }
 
     /**
@@ -142,6 +148,11 @@ public class ForegroundService extends Service {
     {
         stopForeground(true);
         getNotificationManager().cancel(NOTIFICATION_ID);
+
+		if(wfl != null) {
+			wfl.release();
+			wfl = null;
+        }
     }
 
     /**
