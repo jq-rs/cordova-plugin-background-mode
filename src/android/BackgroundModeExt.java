@@ -116,15 +116,17 @@ public class BackgroundModeExt extends CordovaPlugin {
 				wfl.acquire();
 			}
 			
-			getApp().runOnUiThread(() -> {
+			if(isDimmed()) {
+				getApp().runOnUiThread(() -> {
 							View view = webView.getEngine().getView();
 							int visibility = view.getVisibility();
 							Log.d("MlesAlarm", "Updating visibility");
 							view.dispatchWindowVisibilityChanged(View.VISIBLE);
 							view.dispatchWindowVisibilityChanged(visibility);
-			});
+				});
 			
-			webView.loadUrl("javascript:sendEmptyJoin()");
+				webView.loadUrl("javascript:sendEmptyJoin()");
+			}
 		
 			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 
