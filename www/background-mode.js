@@ -247,6 +247,32 @@ exports.moveToForeground = function()
 };
 
 /**
+ * Disable visibility and keepalive in background (Android).
+ *
+ * @return [ Void ]
+ */
+exports.fromBackground = function()
+{
+    if (this._isAndroid)
+    {
+        cordova.exec(null, null, 'BackgroundModeExt', 'fromBackground', []);
+    }
+};
+
+/**
+ * Enable visibility and keepalive in background (Android).
+ *
+ * @return [ Void ]
+ */
+exports.toBackground = function()
+{
+    if (this._isAndroid)
+    {
+        cordova.exec(null, null, 'BackgroundModeExt', 'toBackground', []);
+    }
+};
+
+/**
  * Exclude the app from the recent tasks list (Android only).
  *
  * @return [ Void ]

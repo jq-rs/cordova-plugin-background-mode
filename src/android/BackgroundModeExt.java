@@ -90,7 +90,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private int prevVisibility;
 	final String RECEIVER = ".AlarmReceiver";
 	final int TIMEOUT = 120 * 1000;
-
+	private boolean isOnBg = false;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
 		private PowerManager.WakeLock wakeLock;
@@ -116,7 +116,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 				wfl.acquire();
 			}
 			
-			if(isDimmed()) {
+			if(isOnBg()) {
 				getApp().runOnUiThread(() -> {
 							View view = webView.getEngine().getView();
 							int visibility = view.getVisibility();
@@ -172,6 +172,12 @@ public class BackgroundModeExt extends CordovaPlugin {
                 break;
 			case "disableWake":
                 disablePartialWake();
+                break;
+			case "toBackground":
+                toBackground();
+                break;
+			case "fromBackground":
+                fromBackground();
                 break;
             case "appstart":
                 openAppStart(args.opt(0));
@@ -403,6 +409,21 @@ public class BackgroundModeExt extends CordovaPlugin {
         return !pm.isInteractive();
     }
 
+	private void toBackground()
+    {
+		isOnBg = true;
+    }
+	
+	private void fromBackground()
+    {
+		isOnBg = false;
+    }
+
+	private boolean isOnBg()
+    {
+		return isOnBg;
+    }
+	
     /**
      * Wakes up the device if the screen isn't still on.
      */
