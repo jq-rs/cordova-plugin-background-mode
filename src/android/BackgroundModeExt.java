@@ -125,7 +125,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 							view.dispatchWindowVisibilityChanged(visibility);
 				});
 			
-				webView.loadUrl("javascript:sendEmptyJoin()");
+				//webView.loadUrl("javascript:sendEmptyJoin()");
 			}
 		
 			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
