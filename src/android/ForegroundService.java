@@ -55,11 +55,11 @@ public class ForegroundService extends Service {
 
     // Default title of the background notification
     private static final String NOTIFICATION_TITLE =	
-            "Android WebView has been upgraded";
+            "Android WebView just restarted";
 
     // Default text of the background notification
     private static final String NOTIFICATION_TEXT =
-            "Please restart MlesTalk application";
+            "Please relogin to MlesTalk";
 
     // Default icon of the background notification
     private static final String NOTIFICATION_ICON = "icon";
