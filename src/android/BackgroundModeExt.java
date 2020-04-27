@@ -126,7 +126,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 				});
 			
 				Log.d("MlesAlarm", "Calling resync");
-				webView.loadUrl("javascript:sync_reconnect()");
+				webView.loadUrl("javascript:syncReconnect()");
 			}
 		
 			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
