@@ -90,7 +90,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private int prevVisibility;
 	final String RECEIVER = ".AlarmReceiver";
 	final int TIMEOUT = 120 * 1000;
-	final int WAKELIMIT = 5;
+	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
