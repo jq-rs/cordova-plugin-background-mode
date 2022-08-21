@@ -90,7 +90,6 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private int prevVisibility;
 	final String RECEIVER = ".AlarmReceiver";
 	final int TIMEOUT = 120 * 1000;
-	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
@@ -98,8 +97,6 @@ public class BackgroundModeExt extends CordovaPlugin {
 		private AlarmManager alarmMgr;
 		private PendingIntent alarmIntent;
 		private WifiLock wfl = null;
-		private int wakeCounter = 0;
-
 	
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -118,17 +115,6 @@ public class BackgroundModeExt extends CordovaPlugin {
 			}
 			
 			if(isOnBg()) {
-				if(++wakeCounter == WAKELIMIT) {
-					getApp().runOnUiThread(() -> {
-						View view = webView.getEngine().getView();
-						int visibility = view.getVisibility();
-						Log.d("MlesAlarm", "Updating visibility");
-						view.dispatchWindowVisibilityChanged(View.VISIBLE);
-						view.dispatchWindowVisibilityChanged(visibility);
-					});
-					wakeCounter = 0;
-				}
-			
 				Log.d("MlesAlarm", "Calling resync");
 				webView.loadUrl("javascript:syncReconnect()");
 			}
