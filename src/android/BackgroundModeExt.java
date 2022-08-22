@@ -89,7 +89,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private PendingIntent alarmIntent;
 	final String RECEIVER = ".AlarmReceiver";
 	final int TIMEOUT = 180 * 1000; // 3 mins
-	final int QUICK_TIMEOUT = 10 * 1000; // 10 secs
+	final int QUICK_TIMEOUT = 2 * 1000; // 2 secs
 	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
 	private int timeout = 0;
