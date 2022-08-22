@@ -88,11 +88,9 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
 	final String RECEIVER = ".AlarmReceiver";
-	final int TIMEOUT = 180 * 1000; // 3 mins
-	final int QUICK_TIMEOUT = 2 * 1000; // 2 secs
+	final int TIMEOUT = 240 * 1000; // 4 mins
 	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
-	private int timeout = 0;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
 		private PowerManager.WakeLock wakeLock = null;
@@ -104,12 +102,17 @@ public class BackgroundModeExt extends CordovaPlugin {
 	
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
-			WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
-
-			timeout = TIMEOUT;
 			if(isOnBg()) {
+				PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
+				WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+
 				if(++wakeCounter == WAKELIMIT) {
+					getApp().runOnUiThread(() -> {
+						View view = webView.getEngine().getView();
+						Log.d("MlesAlarm", "Updating visibility " + View.VISIBLE);
+						view.dispatchWindowVisibilityChanged(View.VISIBLE);
+					});
+
 					Log.d("MlesAlarm", "Acquiring locks");
 					if(null == wakeLock) {
 						wakeLock = pm.newWakeLock(
@@ -121,12 +124,6 @@ public class BackgroundModeExt extends CordovaPlugin {
 						wfl.acquire();
 					}
 
-					getApp().runOnUiThread(() -> {
-						View view = webView.getEngine().getView();
-						Log.d("MlesAlarm", "Updating visibility " + View.VISIBLE);
-						view.dispatchWindowVisibilityChanged(View.VISIBLE);
-					});
-
 					Log.d("MlesAlarm", "Calling resync");
 					webView.loadUrl("javascript:syncReconnect()");
 
@@ -136,15 +133,13 @@ public class BackgroundModeExt extends CordovaPlugin {
 					wakeLock.release();
 					wakeLock = null;
 
-					wakeCounter = 0;
-					timeout = QUICK_TIMEOUT;
-				}
-				else if(1 == wakeCounter) {
 					getApp().runOnUiThread(() -> {
 						View view = webView.getEngine().getView();
 						Log.d("MlesAlarm", "Updating visibility " + View.GONE);
 						view.dispatchWindowVisibilityChanged(View.GONE);
 					});
+
+					wakeCounter = 0;
 				}
 			}
 		
@@ -153,9 +148,9 @@ public class BackgroundModeExt extends CordovaPlugin {
 			Intent newIntent = new Intent(RECEIVER);
 		
 			alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
-			Log.d("MlesAlarm", "Setting timeout " + timeout);
+			Log.d("MlesAlarm", "Setting timeout " + TIMEOUT);
 			alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + timeout, alarmIntent);
+										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
 										   
 		}
 	}
