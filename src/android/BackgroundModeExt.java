@@ -87,11 +87,12 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private PowerManager.WakeLock wakeLock;
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
-	private int prevVisibility;
 	final String RECEIVER = ".AlarmReceiver";
-	final int TIMEOUT = 120 * 1000;
+	final int TIMEOUT = 180 * 1000; // 3 mins
+	final int QUICK_TIMEOUT = 10 * 1000; // 10 secs
 	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
+	private int timeout = 0;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
 		private PowerManager.WakeLock wakeLock = null;
@@ -106,31 +107,45 @@ public class BackgroundModeExt extends CordovaPlugin {
 			PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
 			WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
 
-			Log.d("MlesAlarm", "Acquiring locks");
-			if(null == wakeLock) {
-				wakeLock = pm.newWakeLock(
-						PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
-				wakeLock.acquire();
-			}
-			if(null == wfl) {			
-				wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
-				wfl.acquire();
-			}
-			
+			timeout = TIMEOUT;
 			if(isOnBg()) {
 				if(++wakeCounter == WAKELIMIT) {
+					Log.d("MlesAlarm", "Acquiring locks");
+					if(null == wakeLock) {
+						wakeLock = pm.newWakeLock(
+								PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+						wakeLock.acquire();
+					}
+					if(null == wfl) {
+						wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+						wfl.acquire();
+					}
+
 					getApp().runOnUiThread(() -> {
 						View view = webView.getEngine().getView();
-						int visibility = view.getVisibility();
-						Log.d("MlesAlarm", "Updating visibility");
+						Log.d("MlesAlarm", "Updating visibility " + View.VISIBLE);
 						view.dispatchWindowVisibilityChanged(View.VISIBLE);
-						view.dispatchWindowVisibilityChanged(visibility);
 					});
+
+					Log.d("MlesAlarm", "Calling resync");
+					webView.loadUrl("javascript:syncReconnect()");
+
+					Log.d("MlesAlarm", "Releasing acquired locks");
+					wfl.release();
+					wfl = null;
+					wakeLock.release();
+					wakeLock = null;
+
 					wakeCounter = 0;
+					timeout = QUICK_TIMEOUT;
 				}
-			
-				Log.d("MlesAlarm", "Calling resync");
-				webView.loadUrl("javascript:syncReconnect()");
+				else if(1 == wakeCounter) {
+					getApp().runOnUiThread(() -> {
+						View view = webView.getEngine().getView();
+						Log.d("MlesAlarm", "Updating visibility " + View.GONE);
+						view.dispatchWindowVisibilityChanged(View.GONE);
+					});
+				}
 			}
 		
 			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
@@ -138,14 +153,10 @@ public class BackgroundModeExt extends CordovaPlugin {
 			Intent newIntent = new Intent(RECEIVER);
 		
 			alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+			Log.d("MlesAlarm", "Setting timeout " + timeout);
 			alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
+										   SystemClock.elapsedRealtime() + timeout, alarmIntent);
 										   
-			Log.d("MlesAlarm", "Releasing acquired locks");
-			wfl.release();
-			wfl = null;
-			wakeLock.release();
-			wakeLock = null;				   
 		}
 	}
     /**
