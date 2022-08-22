@@ -89,6 +89,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private PendingIntent alarmIntent;
 	final String RECEIVER = ".AlarmReceiver";
 	final int TIMEOUT = 240 * 1000; // 4 mins
+	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
 	
 	private class AlarmReceiver extends BroadcastReceiver {
@@ -96,6 +97,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 		private AlarmManager alarmMgr;
 		private PendingIntent alarmIntent;
 		private WifiLock wfl = null;
+		private int wakeCounter = 0;
 
 	
 		@Override
@@ -104,34 +106,41 @@ public class BackgroundModeExt extends CordovaPlugin {
 				PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
 				WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
 
-				getApp().runOnUiThread(() -> {
+				if(++wakeCounter == WAKELIMIT) {
+					getApp().runOnUiThread(() -> {
 						View view = webView.getEngine().getView();
 						Log.d("MlesAlarm", "Updating visibility " + View.VISIBLE);
 						view.dispatchWindowVisibilityChanged(View.VISIBLE);
 					});
 
-				if(null == wakeLock) {
-					wakeLock = pm.newWakeLock(
-							PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
-					wakeLock.acquire();
-				}
-				if(null == wfl) {
-					wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
-					wfl.acquire();
-				}
+					Log.d("MlesAlarm", "Acquiring locks");
+					if(null == wakeLock) {
+						wakeLock = pm.newWakeLock(
+								PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+						wakeLock.acquire();
+					}
+					if(null == wfl) {
+						wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+						wfl.acquire();
+					}
 
-				webView.loadUrl("javascript:syncReconnect()");
+					Log.d("MlesAlarm", "Calling resync");
+					webView.loadUrl("javascript:syncReconnect()");
 
-				wfl.release();
-				wfl = null;
-				wakeLock.release();
-				wakeLock = null;
+					Log.d("MlesAlarm", "Releasing acquired locks");
+					wfl.release();
+					wfl = null;
+					wakeLock.release();
+					wakeLock = null;
 
-				getApp().runOnUiThread(() -> {
+					getApp().runOnUiThread(() -> {
 						View view = webView.getEngine().getView();
 						Log.d("MlesAlarm", "Updating visibility " + View.GONE);
 						view.dispatchWindowVisibilityChanged(View.GONE);
 					});
+
+					wakeCounter = 0;
+				}
 			}
 		
 			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
