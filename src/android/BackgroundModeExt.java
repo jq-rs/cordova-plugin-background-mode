@@ -33,6 +33,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.PowerManager;
 import android.view.View;
@@ -74,9 +76,6 @@ import android.net.wifi.WifiManager.WifiLock;
 
 import static android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF;
 
-
-
-
 /**
  * Implements extended functions around the main purpose
  * of infinite execution in the background.
@@ -88,7 +87,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
 	final String RECEIVER = ".AlarmReceiver";
-	final int TIMEOUT = 180 * 1000; // 3 mins
+	final int TIMEOUT = 120 * 1000; // 2 mins
 	final int QUICK_TIMEOUT = 2 * 1000; // 2 secs
 	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
@@ -104,54 +103,79 @@ public class BackgroundModeExt extends CordovaPlugin {
 	
 		@Override
 		public void onReceive(Context context, Intent intent) {
+			PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
+			wakeLock = pm.newWakeLock(
+					PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
+			wakeLock.acquire();
 
-			timeout = TIMEOUT;
-			if(isOnBg()) {
-				if(++wakeCounter == WAKELIMIT) {
-					PowerManager pm = (PowerManager)context.getSystemService(POWER_SERVICE);
-					WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
+			try {
+				WifiManager wm = (WifiManager)context.getSystemService(Context.WIFI_SERVICE);
 
-					if(null == wakeLock) {
-						wakeLock = pm.newWakeLock(
-								PARTIAL_WAKE_LOCK, "backgroundmode:wakelock");
-						wakeLock.acquire();
+				timeout = TIMEOUT;
+				if(isOnBg()) {
+					if(++wakeCounter == WAKELIMIT) {
+						ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+						getApp().runOnUiThread(() -> {
+								View view = webView.getEngine().getView();
+								view.dispatchWindowVisibilityChanged(View.VISIBLE);
+								});
+
+						if(cm != null) {
+							NetworkInfo netInfo = cm.getActiveNetworkInfo();
+							//should check null because in airplane mode it will be null
+							if(netInfo != null && netInfo.isConnected()) {
+								wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+								wfl.acquire();
+
+								try {
+									webView.loadUrl("javascript:syncReconnect()");
+								}
+								finally {
+									wfl.release();
+									wfl = null;
+								}
+							}
+							else {
+								Log.d("MlesTalk", "No network!");
+							}
+						}
+						else {
+							Log.d("MlesTalk", "No CM!");
+						}
+
+						wakeCounter = 0;
+						timeout = QUICK_TIMEOUT;
 					}
-					if(null == wfl) {
-						wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
-						wfl.acquire();
+					else if(1 == wakeCounter) {
+						getApp().runOnUiThread(() -> {
+								View view = webView.getEngine().getView();
+								view.dispatchWindowVisibilityChanged(View.GONE);
+								});
 					}
-
-					getApp().runOnUiThread(() -> {
-						View view = webView.getEngine().getView();
-						view.dispatchWindowVisibilityChanged(View.VISIBLE);
-					});
-
-					webView.loadUrl("javascript:syncReconnect()");
-
-					wfl.release();
-					wfl = null;
-					wakeLock.release();
-					wakeLock = null;
-
-					wakeCounter = 0;
-					timeout = QUICK_TIMEOUT;
 				}
-				else if(1 == wakeCounter) {
-					getApp().runOnUiThread(() -> {
-						View view = webView.getEngine().getView();
-						view.dispatchWindowVisibilityChanged(View.GONE);
-					});
-				}
+
+				alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+
+				Intent newIntent = new Intent(RECEIVER);
+
+				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+				alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+						SystemClock.elapsedRealtime() + timeout, alarmIntent);
 			}
-		
-			alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
+			catch(Exception e) {
+				Log.d("MlesTalk", "Got exception, no intent loaded, loading 60 s!");
+				alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 
-			Intent newIntent = new Intent(RECEIVER);
-		
-			alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
-			alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-										   SystemClock.elapsedRealtime() + timeout, alarmIntent);
-										   
+				Intent newIntent = new Intent(RECEIVER);
+
+				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+				alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+						SystemClock.elapsedRealtime() + 60*1000, alarmIntent);
+			}
+			finally {
+				wakeLock.release();
+				wakeLock = null;
+			}
 		}
 	}
     /**
@@ -272,7 +296,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
 										   
-		Log.d("MlesAlarm", "Starting alarm");
+		Log.d("MlesTalk", "Starting alarm");
     }
 
     private void enablePartialWake() {
