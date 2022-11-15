@@ -155,18 +155,27 @@ public class BackgroundModeExt extends CordovaPlugin {
 				alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 
 				Intent newIntent = new Intent(RECEIVER);
+				int flags = 0;
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+					flags = flags | PendingIntent.FLAG_IMMUTABLE;
+				}
 
-				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, flags);
 				alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 						SystemClock.elapsedRealtime() + timeout, alarmIntent);
 			}
 			catch(Exception e) {
+				int flags = 0;
+				if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+					flags = flags | PendingIntent.FLAG_IMMUTABLE;
+				}
+
 				Log.d("MlesTalk", "Got exception, no intent loaded, loading 60 s!");
 				alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 
 				Intent newIntent = new Intent(RECEIVER);
 
-				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, 0);
+				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, flags);
 				alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 						SystemClock.elapsedRealtime() + 60*1000, alarmIntent);
 			}
@@ -289,8 +298,12 @@ public class BackgroundModeExt extends CordovaPlugin {
 		context.registerReceiver(mReceiver, intentFilter);
 		
 		Intent intent = new Intent(RECEIVER);
+		int flags = 0;
+		if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			flags = flags | PendingIntent.FLAG_IMMUTABLE;
+		}
 		
-		alarmIntent = PendingIntent.getBroadcast(context, 0, intent, 0);
+		alarmIntent = PendingIntent.getBroadcast(context, 0, intent, flags);
 		alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
 										   SystemClock.elapsedRealtime() + TIMEOUT, alarmIntent);
 										   

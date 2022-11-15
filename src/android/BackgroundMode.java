@@ -18,7 +18,6 @@
  specific language governing permissions and limitations
  under the License.
  */
-
 package de.appplant.cordova.plugin.background;
 
 import android.app.Activity;
@@ -58,7 +57,7 @@ public class BackgroundMode extends CordovaPlugin {
     private static JSONObject defaultSettings = new JSONObject();
 
     // Service that keeps the app awake
-    private ForegroundService service;
+    private ForegroundService service = null;
 
     // Used to (un)bind the service to with the activity
     private final ServiceConnection connection = new ServiceConnection()
@@ -223,7 +222,7 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void updateNotification(JSONObject settings)
     {
-        if (isBind) {
+        if (isBind && service != null) {
             service.updateNotification(settings);
         }
     }
