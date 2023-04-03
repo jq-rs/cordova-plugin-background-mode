@@ -87,7 +87,7 @@ public class BackgroundModeExt extends CordovaPlugin {
 	private AlarmManager alarmMgr;
 	private PendingIntent alarmIntent;
 	final String RECEIVER = ".AlarmReceiver";
-	final int TIMEOUT = 60 * 1000; // 1 min
+	final int TIMEOUT = 120 * 1000; // 2 mins
 	final int QUICK_TIMEOUT = 2 * 1000; // 2 secs
 	final int WAKELIMIT = 2;
 	private boolean isOnBg = false;
@@ -123,19 +123,20 @@ public class BackgroundModeExt extends CordovaPlugin {
 						if(cm != null) {
 							NetworkInfo netInfo = cm.getActiveNetworkInfo();
 
-							wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
-							wfl.acquire();
-
 							//should check null because in airplane mode it will be null
 							if(netInfo != null && netInfo.isConnected()) {
+
+								wfl = wm.createWifiLock(WIFI_MODE_FULL_HIGH_PERF, "backgroundmode:sync_all_wifi");
+								wfl.acquire();
+
 								webView.loadUrl("javascript:syncReconnect()");
+
+								wfl.release();
+								wfl = null;
 							}
 							else {
 								Log.d("MlesTalk", "No network!");
 							}
-
-							wfl.release();
-							wfl = null;
 						}
 						else {
 							Log.d("MlesTalk", "No CM!");
@@ -170,14 +171,14 @@ public class BackgroundModeExt extends CordovaPlugin {
 					flags = flags | PendingIntent.FLAG_IMMUTABLE;
 				}
 
-				Log.d("MlesTalk", "Got exception, no intent loaded, loading 60 s!");
+				Log.d("MlesTalk", "Got exception, no intent loaded, loading 120 s!");
 				alarmMgr = (AlarmManager)context.getSystemService(Context.ALARM_SERVICE);
 
 				Intent newIntent = new Intent(RECEIVER);
 
 				alarmIntent = PendingIntent.getBroadcast(context, 0, newIntent, flags);
 				alarmMgr.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-						SystemClock.elapsedRealtime() + 60*1000, alarmIntent);
+						SystemClock.elapsedRealtime() + 120*1000, alarmIntent);
 			}
 			finally {
 				wakeLock.release();
