@@ -131,7 +131,10 @@ public class ForegroundService extends Service {
         boolean isSilent    = settings.optBoolean("silent", false);
 
         if (!isSilent) {
-            startForeground(NOTIFICATION_ID, makeNotification());
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            		startForeground(NOTIFICATION_ID, makeNotification(), FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING);
+		else
+            		startForeground(NOTIFICATION_ID, makeNotification());
         }		
 		
 		if(wfl == null) {
