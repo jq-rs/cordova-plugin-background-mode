@@ -38,6 +38,7 @@ import android.os.PowerManager;
 import android.app.NotificationChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.WifiLock;
+import android.Manifest;
 
 import org.json.JSONObject;
 
@@ -131,8 +132,10 @@ public class ForegroundService extends Service {
         boolean isSilent    = settings.optBoolean("silent", false);
 
         if (!isSilent) {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            		startForeground(NOTIFICATION_ID, makeNotification(), android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING);
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+			String permission = Manifest.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING;
+            		startForeground(NOTIFICATION_ID, makeNotification(), permission);
+		}
 		else
             		startForeground(NOTIFICATION_ID, makeNotification());
         }		
