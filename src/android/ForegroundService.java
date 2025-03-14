@@ -38,6 +38,7 @@ import android.os.PowerManager;
 import android.app.NotificationChannel;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.WifiLock;
+import android.Manifest.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING;
 
 import org.json.JSONObject;
 
