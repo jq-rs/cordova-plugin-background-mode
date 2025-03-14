@@ -83,8 +83,7 @@
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
-            <service android:name="de.appplant.cordova.plugin.background.ForegroundService" />
-            <service android:foregroundServiceType="remoteMessaging" />
+            <service android:name="de.appplant.cordova.plugin.background.ForegroundService" android:foregroundServiceType="remoteMessaging" />
         </config-file>
 
         <source-file
