@@ -603,7 +603,7 @@ public class MlesMonitor {
     private void scheduleReconnect(ChannelConfig config) {
 	if (!isRunning || !networkAvailable) {
             //Log.d(TAG, "scheduleReconnect: skipped (running=" + isRunning +
-                    ", network=" + networkAvailable + ")");
+                    //", network=" + networkAvailable + ")");
             return;
         }
 
