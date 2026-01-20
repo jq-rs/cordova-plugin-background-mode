@@ -92,7 +92,7 @@ public class MlesMonitor {
      */
     public void start() {
         if (isRunning) {
-            Log.d(TAG, "Already running");
+            //Log.d(TAG, "Already running");
             return;
         }
 
@@ -106,7 +106,7 @@ public class MlesMonitor {
             channels = loadChannels();
         }
 
-        Log.d(TAG, "Found " + channels.size() + " channels to monitor");
+        //Log.d(TAG, "Found " + channels.size() + " channels to monitor");
 
         // Store channels for network callback
         activeChannels = channels;
@@ -149,7 +149,7 @@ public class MlesMonitor {
         // NOTE: We don't clear the cache here - it's needed for START_STICKY restart
         // If you want to clear cache on stop, uncomment: clearChannelsCache();
 
-        Log.d(TAG, "All connections closed");
+        //Log.d(TAG, "All connections closed");
     }
 
     /**
@@ -180,16 +180,16 @@ public class MlesMonitor {
      */
     public void startWithChannels(String channelsJson) {
         if (isRunning) {
-            Log.d(TAG, "Already running, stopping first");
+            //Log.d(TAG, "Already running, stopping first");
             stop();
         }
 
         isRunning = true;
         List<ChannelConfig> channels = parseChannelsJson(channelsJson);
-        Log.d(TAG, "Starting with " + channels.size() + " channels from Intent");
+        //Log.d(TAG, "Starting with " + channels.size() + " channels from Intent");
 
         if (channels.isEmpty()) {
-            Log.w(TAG, "No valid channels to monitor");
+            //Log.w(TAG, "No valid channels to monitor");
             return;
         }
 
@@ -234,21 +234,21 @@ public class MlesMonitor {
             networkCallback = new ConnectivityManager.NetworkCallback() {
                 @Override
                 public void onAvailable(Network network) {
-                    Log.d(TAG, "Network available - triggering reconnect for all channels");
+                    //Log.d(TAG, "Network available - triggering reconnect for all channels");
 		    networkAvailable = true;
                     onNetworkAvailable();
                 }
 
                 @Override
                 public void onLost(Network network) {
-                    Log.d(TAG, "Network lost");
+                    //Log.d(TAG, "Network lost");
 		    networkAvailable = false;
                     onNetworkLost();
                 }
             };
 
             cm.registerNetworkCallback(request, networkCallback);
-            Log.d(TAG, "Network callback registered");
+            //Log.d(TAG, "Network callback registered");
 
         } catch (Exception e) {
             Log.e(TAG, "Error registering network callback", e);
@@ -262,7 +262,7 @@ public class MlesMonitor {
                 ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
                 if (cm != null) {
                     cm.unregisterNetworkCallback(networkCallback);
-                    Log.d(TAG, "Network callback unregistered");
+                    //Log.d(TAG, "Network callback unregistered");
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering network callback", e);
@@ -274,7 +274,7 @@ public class MlesMonitor {
     // NEW: Handle network available event
     private void onNetworkAvailable() {
         if (!isRunning) {
-            Log.d(TAG, "onNetworkAvailable: not running, ignoring");
+            //Log.d(TAG, "onNetworkAvailable: not running, ignoring");
             return;
         }
 
@@ -284,7 +284,7 @@ public class MlesMonitor {
 
             // If not connected, reconnect immediately
             if (!connections.containsKey(channel.channelName)) {
-                Log.d(TAG, "Network available - reconnecting: " + channel.channelName);
+                //Log.d(TAG, "Network available - reconnecting: " + channel.channelName);
                 connectToChannel(channel);
             }
         }
@@ -310,12 +310,12 @@ public class MlesMonitor {
         List<ChannelConfig> channels = new ArrayList<>();
 
         if (channelsJson == null || channelsJson.isEmpty()) {
-            Log.w(TAG, "parseChannelsJson: empty JSON");
+            //Log.w(TAG, "parseChannelsJson: empty JSON");
             return channels;
         }
 
         try {
-            Log.d(TAG, "Parsing channels JSON: " + channelsJson);
+            //Log.d(TAG, "Parsing channels JSON: " + channelsJson);
             JSONObject json = new JSONObject(channelsJson);
             Iterator<String> keys = json.keys();
 
@@ -330,7 +330,7 @@ public class MlesMonitor {
                 String msgChksum = data.optString("msg_chksum", "0");
 
                 if (userName == null || channel == null || userName.isEmpty() || channel.isEmpty()) {
-                    Log.w(TAG, "Skipping channel, missing data: " + channelName);
+                    //Log.w(TAG, "Skipping channel, missing data: " + channelName);
                     continue;
                 }
 
@@ -351,7 +351,7 @@ public class MlesMonitor {
                     }
                 }
 
-                Log.d(TAG, "Parsed channel: " + channel + " channel_dec: " + channel_dec + " user: " + userName + " @ " + server + ":" + port + " chksum: " + msgChksum);
+                //Log.d(TAG, "Parsed channel: " + channel + " channel_dec: " + channel_dec + " user: " + userName + " @ " + server + ":" + port + " chksum: " + msgChksum);
                 channels.add(new ChannelConfig(userName, channel, channel_dec, server, port, msgChksum));
             }
         } catch (Exception e) {
@@ -406,11 +406,11 @@ public class MlesMonitor {
             String activeChannelsJson = prefs.getString("gActiveChannelsJSON", null);
 
             if (activeChannelsJson == null || activeChannelsJson.isEmpty()) {
-                Log.d(TAG, "No active channels found");
+                //Log.d(TAG, "No active channels found");
                 return channels;
             }
 
-            Log.d(TAG, "Active channels JSON: " + activeChannelsJson);
+            //Log.d(TAG, "Active channels JSON: " + activeChannelsJson);
 
             // Parse JSON: {"channel1":"channel1", "channel2":"channel2"}
             JSONObject json = new JSONObject(activeChannelsJson);
@@ -436,7 +436,7 @@ public class MlesMonitor {
      */
     private void saveChannelsToCache(List<ChannelConfig> channels) {
         if (channels == null || channels.isEmpty()) {
-            Log.d(TAG, "No channels to save to cache");
+            //Log.d(TAG, "No channels to save to cache");
             return;
         }
 
@@ -461,7 +461,7 @@ public class MlesMonitor {
             editor.putString("cached_channels", cacheJson.toString());
             editor.apply();
 
-            Log.d(TAG, "Saved " + channels.size() + " channels to cache");
+            //Log.d(TAG, "Saved " + channels.size() + " channels to cache");
 
         } catch (Exception e) {
             Log.e(TAG, "Error saving channels to cache", e);
@@ -479,11 +479,11 @@ public class MlesMonitor {
             String cacheJson = prefs.getString("cached_channels", null);
 
             if (cacheJson == null || cacheJson.isEmpty()) {
-                Log.d(TAG, "No cached channels found");
+                //Log.d(TAG, "No cached channels found");
                 return channels;
             }
 
-            Log.d(TAG, "Loading channels from cache");
+            //Log.d(TAG, "Loading channels from cache");
 
             JSONObject json = new JSONObject(cacheJson);
             Iterator<String> keys = json.keys();
@@ -501,11 +501,11 @@ public class MlesMonitor {
 
                 if (userName != null && channel != null) {
                     channels.add(new ChannelConfig(userName, channel, channelDec, server, port, msgChksum));
-                    Log.d(TAG, "Restored channel from cache: " + channel);
+                    //Log.d(TAG, "Restored channel from cache: " + channel);
                 }
             }
 
-            Log.d(TAG, "Loaded " + channels.size() + " channels from cache");
+            //Log.d(TAG, "Loaded " + channels.size() + " channels from cache");
 
         } catch (Exception e) {
             Log.e(TAG, "Error loading channels from cache", e);
@@ -521,7 +521,7 @@ public class MlesMonitor {
         try {
             SharedPreferences prefs = context.getSharedPreferences(PREFS_ACTIVE_CHANNELS, Context.MODE_PRIVATE);
             prefs.edit().clear().apply();
-            Log.d(TAG, "Cleared channels cache");
+            //Log.d(TAG, "Cleared channels cache");
         } catch (Exception e) {
             Log.e(TAG, "Error clearing channels cache", e);
         }
@@ -538,7 +538,7 @@ public class MlesMonitor {
             String addrPort = prefs.getString("gAddrPortInput" + channelName, "mles.io:443");
             String msgChksum = prefs.getString("gMsgChksum" + channelName, "0");
 
-            Log.d(TAG, "Channel " + channelName + ", Channel decrypted " + channelDec + ": name=" + userName + ", channel=" + channel + ", server=" + addrPort + ", chksum=" + msgChksum);
+            //Log.d(TAG, "Channel " + channelName + ", Channel decrypted " + channelDec + ": name=" + userName + ", channel=" + channel + ", server=" + addrPort + ", chksum=" + msgChksum);
 
             // Parse server:port
             String server = "mles.io";
@@ -561,7 +561,7 @@ public class MlesMonitor {
             return new ChannelConfig(userName, channel, channelDec, server, port, msgChksum);
 
         } catch (Exception e) {
-            Log.e(TAG, "Error loading channel config: " + channelName, e);
+            //Log.e(TAG, "Error loading channel config: " + channelName, e);
             return null;
         }
     }
@@ -574,7 +574,7 @@ public class MlesMonitor {
 
         try {
             String url = config.getWsUrl();
-            Log.d(TAG, "Connecting to: " + url + " for channel: " + config.channelName);
+            //Log.d(TAG, "Connecting to: " + url + " for channel: " + config.channelName);
 
             Request request = new Request.Builder()
                     .url(url)
@@ -585,7 +585,7 @@ public class MlesMonitor {
             connections.put(config.channelName, ws);
 
         } catch (Exception e) {
-            Log.e(TAG, "Error connecting to: " + config.channelName, e);
+            //Log.e(TAG, "Error connecting to: " + config.channelName, e);
             scheduleReconnect(config);
         }
     }
@@ -602,7 +602,7 @@ public class MlesMonitor {
      */
     private void scheduleReconnect(ChannelConfig config) {
 	if (!isRunning || !networkAvailable) {
-            Log.d(TAG, "scheduleReconnect: skipped (running=" + isRunning +
+            //Log.d(TAG, "scheduleReconnect: skipped (running=" + isRunning +
                     ", network=" + networkAvailable + ")");
             return;
         }
@@ -618,13 +618,13 @@ public class MlesMonitor {
         // Exponential backoff: 5s, 10s, 20s, 40s, 80s, 160s, 180s (max)
         int delay = Math.min(BASE_RECONNECT_DELAY * (1 << (attempts - 1)), MAX_RECONNECT_DELAY);
 
-        Log.d(TAG, "Scheduling reconnect for: " + config.channelName + " in " + (delay/1000) + "s (attempt " + attempts + ")");
+        //Log.d(TAG, "Scheduling reconnect for: " + config.channelName + " in " + (delay/1000) + "s (attempt " + attempts + ")");
 
         Runnable task = () -> {
             pendingReconnects.remove(config.channelName);
             if (isRunning && networkAvailable &&
                     !connections.containsKey(config.channelName)) {
-                Log.d(TAG, "Reconnecting to: " + config.channelName);
+                //Log.d(TAG, "Reconnecting to: " + config.channelName);
                 connectToChannel(config);
             }
         };
@@ -640,7 +640,7 @@ public class MlesMonitor {
         if (!connectionStable.getOrDefault(channelName, false)) {
             connectionStable.put(channelName, true);
             reconnectAttempts.put(channelName, 0);
-            Log.d(TAG, "Connection stable, reset backoff for: " + channelName);
+            //Log.d(TAG, "Connection stable, reset backoff for: " + channelName);
         }
     }
 
@@ -658,7 +658,7 @@ public class MlesMonitor {
 
         @Override
         public void onOpen(WebSocket webSocket, Response response) {
-            Log.d(TAG, "WebSocket opened: " + config.channelName);
+            //Log.d(TAG, "WebSocket opened: " + config.channelName);
 
             // Send join message - Mles protocol first frame
             String joinMessage = String.format(
@@ -667,7 +667,7 @@ public class MlesMonitor {
                     config.channelName
             );
 
-            Log.d(TAG, "Sending join: " + joinMessage);
+            //Log.d(TAG, "Sending join: " + joinMessage);
             webSocket.send(joinMessage);
         }
 
@@ -691,13 +691,13 @@ public class MlesMonitor {
 
         @Override
         public void onClosing(WebSocket webSocket, int code, String reason) {
-            Log.d(TAG, "WebSocket closing: " + config.channelName + " - " + reason);
+            //Log.d(TAG, "WebSocket closing: " + config.channelName + " - " + reason);
             webSocket.close(1000, null);
         }
 
         @Override
         public void onClosed(WebSocket webSocket, int code, String reason) {
-            Log.d(TAG, "WebSocket closed: " + config.channelName + " - " + reason);
+            //Log.d(TAG, "WebSocket closed: " + config.channelName + " - " + reason);
             connections.remove(config.channelName);
             channelSynced.put(config.channelName, false);
             if (networkAvailable) {
@@ -709,7 +709,7 @@ public class MlesMonitor {
         public void onFailure(WebSocket webSocket, Throwable t, Response response) {
             if (!isRunning) {
                 // Expected during shutdown - don't log as error
-                Log.d(TAG, "WebSocket closed during shutdown: " + config.channelName);
+                //Log.d(TAG, "WebSocket closed during shutdown: " + config.channelName);
             } else {
                 Log.e(TAG, "WebSocket failure: " + config.channelName);
                 connections.remove(config.channelName);
@@ -747,7 +747,7 @@ public class MlesMonitor {
         if (synced == null || !synced) {
             if (lastChksum == null || lastChksum.isEmpty() || lastChksum.equals("0")) {
                 // No previous checksum - sync immediately
-                Log.d(TAG, "No previous checksum for " + config.channelName + ", synced");
+                //Log.d(TAG, "No previous checksum for " + config.channelName + ", synced");
                 channelSynced.put(config.channelName, true);
                 config.setChksum(hashHex);
                 if (resyncListener != null) {
@@ -755,7 +755,7 @@ public class MlesMonitor {
                 }
             } else if (lastChksum.equals(hashHex)) {
                 // Found the last known message - now synced
-                Log.d(TAG, "Synced to last message on " + config.channelName);
+                //Log.d(TAG, "Synced to last message on " + config.channelName);
                 channelSynced.put(config.channelName, true);
                 syncStartTime.remove(config.channelName);
                 if (resyncListener != null) {
@@ -767,10 +767,10 @@ public class MlesMonitor {
                 if (startTime == null) {
                     // Start the timer
                     syncStartTime.put(config.channelName, now);
-                    Log.d(TAG, "Catching up on " + config.channelName + ", waiting for sync");
+                    //Log.d(TAG, "Catching up on " + config.channelName + ", waiting for sync");
                 } else if (now - startTime > SYNC_TIMEOUT_MS) {
                     // Timeout - sync to latest
-                    Log.d(TAG, "Sync timeout on " + config.channelName + ", syncing to latest");
+                    //Log.d(TAG, "Sync timeout on " + config.channelName + ", syncing to latest");
                     channelSynced.put(config.channelName, true);
                     config.setChksum(hashHex);
                     syncStartTime.remove(config.channelName);

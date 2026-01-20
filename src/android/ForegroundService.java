@@ -115,7 +115,7 @@ public class ForegroundService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "════ SERVICE CREATED ════");
+        //Log.d(TAG, "════ SERVICE CREATED ════");
         keepAwake();
     }
 
@@ -124,7 +124,7 @@ public class ForegroundService extends Service {
      */
     @Override
     public void onDestroy() {
-        Log.d(TAG, "════ SERVICE DESTROYED ════");
+        //Log.d(TAG, "════ SERVICE DESTROYED ════");
         stopMlesMonitor();
         super.onDestroy();
         sleepWell();
@@ -132,7 +132,7 @@ public class ForegroundService extends Service {
 
 @Override
 public int onStartCommand(Intent intent, int flags, int startId) {
-    Log.d(TAG, "onStartCommand, action=" + (intent == null ? "null" : intent.getAction()));
+    //Log.d(TAG, "onStartCommand, action=" + (intent == null ? "null" : intent.getAction()));
 
     if (intent != null) {
         String action = intent.getAction();
@@ -142,13 +142,13 @@ public int onStartCommand(Intent intent, int flags, int startId) {
             String text = intent.getStringExtra("text");
             if (text != null && !text.isEmpty()) {
                 notificationText = text;
-                Log.d(TAG, "Stored notification text: " + notificationText);
+                //Log.d(TAG, "Stored notification text: " + notificationText);
             }
-            Log.d(TAG, "START_MONITORING, channels: " + channelsJson);
+            //Log.d(TAG, "START_MONITORING, channels: " + channelsJson);
             startMlesMonitorWithChannels(channelsJson);
 
         } else if ("STOP_MONITORING".equals(action)) {
-            Log.d(TAG, "STOP_MONITORING");
+            //Log.d(TAG, "STOP_MONITORING");
             stopMlesMonitor();
 
         } else if (BackgroundMode.ACTION_UPDATE_NOTIFICATION.equals(action)) {
@@ -173,7 +173,7 @@ private void showNewMessageNotificationThrottled(String channel) {
     if ((now - lastNotificationTime) >= NOTIFICATION_THROTTLE_MS) {
         lastNotificationTime = now;
         showNewMessageNotification(channel);
-        Log.d(TAG, "Notification shown for: " + channel);
+        //Log.d(TAG, "Notification shown for: " + channel);
     } else {
         long remainingMs = NOTIFICATION_THROTTLE_MS - (now - lastNotificationTime);
         //Log.d(TAG, "Notification throttled, wait " + (remainingMs / 1000) + "s more");
@@ -189,11 +189,11 @@ private void startMlesMonitorWithChannels(String channelsJson) {
             showNewMessageNotificationThrottled(channel);
         });
         mlesMonitor.setOnResyncListener((channelName) -> {
-            Log.d(TAG, "Channel synced: " + channelName + ", killing main UI process");
+            //Log.d(TAG, "Channel synced: " + channelName + ", killing main UI process");
             killMainUIProcess();
         });
         mlesMonitor.startWithChannels(channelsJson);
-        Log.d(TAG, "MlesMonitor started with channels");
+        //Log.d(TAG, "MlesMonitor started with channels");
     } catch (Exception e) {
         Log.e(TAG, "Failed to start MlesMonitor", e);
     }
@@ -214,14 +214,14 @@ private void killMainUIProcess() {
             for (ActivityManager.RunningAppProcessInfo process : processes) {
                 // Find the main process (without ":background" suffix)
                 if (process.processName.equals(mainProcessName)) {
-                    Log.d(TAG, "Found main UI process with PID: " + process.pid + ", killing it");
+                    //Log.d(TAG, "Found main UI process with PID: " + process.pid + ", killing it");
                     android.os.Process.killProcess(process.pid);
                     return;
                 }
             }
         }
 
-        Log.d(TAG, "Main UI process not found, it may not be running");
+        //Log.d(TAG, "Main UI process not found, it may not be running");
     } catch (Exception e) {
         Log.e(TAG, "Error killing main UI process: " + e.getMessage(), e);
     }
@@ -438,7 +438,7 @@ private void startMlesMonitor() {
             showNewMessageNotificationThrottled(channel);
         });
         mlesMonitor.start();
-        Log.d(TAG, "MlesMonitor started");
+        //Log.d(TAG, "MlesMonitor started");
     } catch (Exception e) {
         Log.e(TAG, "Failed to start MlesMonitor", e);
     }
@@ -448,7 +448,7 @@ private void stopMlesMonitor() {
     if (mlesMonitor != null) {
         mlesMonitor.stop();
         mlesMonitor = null;
-        Log.d(TAG, "MlesMonitor stopped");
+        //Log.d(TAG, "MlesMonitor stopped");
     }
 }
 
@@ -512,7 +512,7 @@ private void showNewMessageNotification(String channel) {
         builder.setVibrate(new long[]{0, 250, 250, 250});
     }
 
-    Log.d(TAG, "Using notification text: " + notificationText);
+    //Log.d(TAG, "Using notification text: " + notificationText);
     builder.setContentTitle(notificationText + " @ " + channel)
             .setSmallIcon(getIconResId("micon", "mipmap"))
             .setContentIntent(pendingIntent)

@@ -146,7 +146,7 @@ public class BackgroundMode extends CordovaPlugin {
 	    intent.setAction("STOP_MONITORING");
 	    try {
 		    context.startService(intent);
-		    Log.d(TAG, "Sent STOP_MONITORING to service");
+		    //Log.d(TAG, "Sent STOP_MONITORING to service");
 	    } catch (Exception e) {
 		    Log.e(TAG, "Failed to stop monitoring: " + e.getMessage());
 	    }
@@ -158,7 +158,7 @@ public class BackgroundMode extends CordovaPlugin {
     @Override
     public void onDestroy()
     {
-        Log.d(TAG, "onDestroy, kill pid");
+        //Log.d(TAG, "onDestroy, kill pid");
         android.os.Process.killProcess(android.os.Process.myPid());
     }
 
@@ -202,7 +202,7 @@ private void setChannels(JSONObject channels) {
         editor.putString("gActiveChannelsJSON", channels.toString());
         editor.apply();
 
-        Log.d(TAG, "Channels saved: " + channels.toString());
+        //Log.d(TAG, "Channels saved: " + channels.toString());
 
     } catch (Exception e) {
         Log.e(TAG, "Error saving channels", e);
@@ -226,11 +226,11 @@ private void setChannels(JSONObject channels) {
      */
     private void configure(JSONObject settings, boolean update)
     {
-    	Log.d(TAG, "configure: settings=" + (settings == null ? "null" : settings.toString()));
+    	//Log.d(TAG, "configure: settings=" + (settings == null ? "null" : settings.toString()));
 
     	// Check if we should stop monitoring
     	if (settings.optBoolean("stopMonitoring", false)) {
-        	Log.d(TAG, "configure: stopMonitoring requested");
+        	//Log.d(TAG, "configure: stopMonitoring requested");
         	stopMonitoring();
     	}
 
@@ -244,11 +244,11 @@ private void setChannels(JSONObject channels) {
 	JSONObject channels = settings.optJSONObject("channels");
 	if (channels != null && channels.length() > 0) {
 		if (inBackground) {
-			Log.d(TAG, "configure: found channels, starting monitoring");
+			//Log.d(TAG, "configure: found channels, starting monitoring");
 			String text = settings.optString("text", "New message");
 			startServiceWithChannels(channels.toString(), text);
         	} else {
-            		Log.d(TAG, "configure: found channels but app is in foreground, skipping");
+            		//Log.d(TAG, "configure: found channels but app is in foreground, skipping");
         	}
 	}
     }
@@ -267,7 +267,7 @@ private void setChannels(JSONObject channels) {
 			context.startService(intent);
 		}
 		isServiceRunning = true;
-		Log.d(TAG, "Service started with channels");
+		//Log.d(TAG, "Service started with channels");
 	} catch (Exception e) {
 		Log.e(TAG, "Error starting service: " + e.getMessage());
 	}
@@ -331,7 +331,7 @@ private void setChannels(JSONObject channels) {
             }
             fireEvent(Event.ACTIVATE, null);
             isServiceRunning = true;
-            Log.d(TAG, "Service started");
+            //Log.d(TAG, "Service started");
         } catch (Exception e) {
             fireEvent(Event.FAILURE, String.format("'%s'", e.getMessage()));
             Log.e(TAG, "Failed to start service: " + e.getMessage());
@@ -352,7 +352,7 @@ private void setChannels(JSONObject channels) {
             fireEvent(Event.DEACTIVATE, null);
             context.stopService(intent);
             isServiceRunning = false;
-            Log.d(TAG, "Service stopped");
+            //Log.d(TAG, "Service stopped");
         } catch (Exception e) {
             Log.e(TAG, "Failed to stop service: " + e.getMessage());
         }
