@@ -21,22 +21,24 @@
 package de.appplant.cordova.plugin.background;
 
 import android.app.Activity;
-import android.content.ComponentName;
 import android.content.Intent;
-import android.content.ServiceConnection;
-import android.os.IBinder;
+import android.os.Build;
+import android.util.Log;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import de.appplant.cordova.plugin.background.ForegroundService.ForegroundBinder;
+import java.util.Iterator;
+import android.content.SharedPreferences;
+import android.content.Context;
 
-import static android.content.Context.BIND_AUTO_CREATE;
 import static de.appplant.cordova.plugin.background.BackgroundModeExt.clearKeyguardFlags;
 
 public class BackgroundMode extends CordovaPlugin {
+
+    private static final String TAG = "MlesBackgroundMode";
 
     // Event types for callbacks
     private enum Event { ACTIVATE, DEACTIVATE, FAILURE }
@@ -50,31 +52,14 @@ public class BackgroundMode extends CordovaPlugin {
     // Flag indicates if the plugin is enabled or disabled
     private boolean isDisabled = true;
 
-    // Flag indicates if the service is bind
-    private boolean isBind = false;
+    // Flag indicates if the service is running
+    private boolean isServiceRunning = false;
 
     // Default settings for the notification
     private static JSONObject defaultSettings = new JSONObject();
 
-    // Service that keeps the app awake
-    private ForegroundService service = null;
-
-    // Used to (un)bind the service to with the activity
-    private final ServiceConnection connection = new ServiceConnection()
-    {
-        @Override
-        public void onServiceConnected (ComponentName name, IBinder service)
-        {
-            ForegroundBinder binder = (ForegroundBinder) service;
-            BackgroundMode.this.service = binder.getService();
-        }
-
-        @Override
-        public void onServiceDisconnected (ComponentName name)
-        {
-            fireEvent(Event.FAILURE, "'service disconnected'");
-        }
-    };
+    // Intent actions for cross-process communication
+    public static final String ACTION_UPDATE_NOTIFICATION = "de.appplant.cordova.plugin.background.UPDATE_NOTIFICATION";
 
     /**
      * Executes the request.
@@ -103,6 +88,9 @@ public class BackgroundMode extends CordovaPlugin {
             case "disable":
                 disableMode();
                 break;
+	    case "setChannels":
+		setChannels(args.optJSONObject(0));
+		break;
             default:
                 validAction = false;
         }
@@ -146,10 +134,22 @@ public class BackgroundMode extends CordovaPlugin {
      * @param multitasking Flag indicating if multitasking is turned on for app.
      */
     @Override
-    public void onResume (boolean multitasking)
+    public void onResume(boolean multitasking)
     {
-        inBackground = false;
-        stopService();
+	    inBackground = false;
+	    stopMonitoring();
+    }
+
+    private void stopMonitoring() {
+	    Activity context = cordova.getActivity();
+	    Intent intent = new Intent(context, ForegroundService.class);
+	    intent.setAction("STOP_MONITORING");
+	    try {
+		    context.startService(intent);
+		    //Log.d(TAG, "Sent STOP_MONITORING to service");
+	    } catch (Exception e) {
+		    Log.e(TAG, "Failed to stop monitoring: " + e.getMessage());
+	    }
     }
 
     /**
@@ -158,7 +158,7 @@ public class BackgroundMode extends CordovaPlugin {
     @Override
     public void onDestroy()
     {
-        stopService();
+        //Log.d(TAG, "onDestroy, kill pid");
         android.os.Process.killProcess(android.os.Process.myPid());
     }
 
@@ -173,6 +173,41 @@ public class BackgroundMode extends CordovaPlugin {
             startService();
         }
     }
+
+private void setChannels(JSONObject channels) {
+    if (channels == null) return;
+
+    try {
+        SharedPreferences prefs = cordova.getActivity()
+                .getSharedPreferences("MlesTalkChannels", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
+        // Clear old data
+        editor.clear();
+
+        // Save each channel's data
+        Iterator<String> keys = channels.keys();
+        while (keys.hasNext()) {
+            String channelName = keys.next();
+            JSONObject channelData = channels.getJSONObject(channelName);
+
+            editor.putString("gMyName" + channelName, channelData.optString("name"));
+            editor.putString("gMyChannel" + channelName, channelData.optString("channel"));
+            editor.putString("gMyChannelDec" + channelName, channelData.optString("channel_dec"));
+            editor.putString("gAddrPortInput" + channelName, channelData.optString("server"));
+            editor.putString("gMsgChksum" + channelName, channelData.optString("msg_chksum"));
+        }
+
+        // Save active channels list
+        editor.putString("gActiveChannelsJSON", channels.toString());
+        editor.apply();
+
+        //Log.d(TAG, "Channels saved: " + channels.toString());
+
+    } catch (Exception e) {
+        Log.e(TAG, "Error saving channels", e);
+    }
+}
 
     /**
      * Disable the background mode.
@@ -191,11 +226,51 @@ public class BackgroundMode extends CordovaPlugin {
      */
     private void configure(JSONObject settings, boolean update)
     {
+    	//Log.d(TAG, "configure: settings=" + (settings == null ? "null" : settings.toString()));
+
+    	// Check if we should stop monitoring
+    	if (settings.optBoolean("stopMonitoring", false)) {
+        	//Log.d(TAG, "configure: stopMonitoring requested");
+        	stopMonitoring();
+    	}
+
         if (update) {
             updateNotification(settings);
         } else {
             setDefaultSettings(settings);
         }
+
+	// Check if channels are included and start monitoring
+	JSONObject channels = settings.optJSONObject("channels");
+	if (channels != null && channels.length() > 0) {
+		if (inBackground) {
+			//Log.d(TAG, "configure: found channels, starting monitoring");
+			String text = settings.optString("text", "New message");
+			startServiceWithChannels(channels.toString(), text);
+        	} else {
+            		//Log.d(TAG, "configure: found channels but app is in foreground, skipping");
+        	}
+	}
+    }
+
+    private void startServiceWithChannels(String channelsJson, String text) {
+	Activity context = cordova.getActivity();
+	Intent intent = new Intent(context, ForegroundService.class);
+	intent.setAction("START_MONITORING");
+	intent.putExtra("channels", channelsJson);
+	intent.putExtra("text", text);
+
+	try {
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			context.startForegroundService(intent);
+		} else {
+			context.startService(intent);
+		}
+		isServiceRunning = true;
+		//Log.d(TAG, "Service started with channels");
+	} catch (Exception e) {
+		Log.e(TAG, "Error starting service: " + e.getMessage());
+	}
     }
 
     /**
@@ -216,61 +291,75 @@ public class BackgroundMode extends CordovaPlugin {
     }
 
     /**
-     * Update the notification.
+     * Update the notification via Intent (works across processes).
      *
      * @param settings The config settings
      */
     private void updateNotification(JSONObject settings)
     {
-        if (isBind && service != null) {
-            service.updateNotification(settings);
+        if (!isServiceRunning) return;
+
+        Activity context = cordova.getActivity();
+        Intent intent = new Intent(context, ForegroundService.class);
+        intent.setAction(ACTION_UPDATE_NOTIFICATION);
+        intent.putExtra("settings", settings.toString());
+
+        try {
+            context.startService(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to update notification: " + e.getMessage());
         }
     }
 
     /**
-     * Bind the activity to a background service and put them into foreground
-     * state.
+     * Start the background service.
      */
     private void startService()
     {
         Activity context = cordova.getActivity();
 
-        if (isDisabled || isBind)
+        if (isDisabled || isServiceRunning)
             return;
 
         Intent intent = new Intent(context, ForegroundService.class);
 
         try {
-            context.bindService(intent, connection, BIND_AUTO_CREATE);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
             fireEvent(Event.ACTIVATE, null);
-            context.startService(intent);
+            isServiceRunning = true;
+            //Log.d(TAG, "Service started");
         } catch (Exception e) {
             fireEvent(Event.FAILURE, String.format("'%s'", e.getMessage()));
+            Log.e(TAG, "Failed to start service: " + e.getMessage());
         }
-
-        isBind = true;
     }
 
     /**
-     * Bind the activity to a background service and put them into foreground
-     * state.
+     * Stop the background service.
      */
     private void stopService()
     {
         Activity context = cordova.getActivity();
-        Intent intent    = new Intent(context, ForegroundService.class);
+        Intent intent = new Intent(context, ForegroundService.class);
 
-        if (!isBind) return;
+        if (!isServiceRunning) return;
 
-        fireEvent(Event.DEACTIVATE, null);
-        context.unbindService(connection);
-        context.stopService(intent);
-
-        isBind = false;
+        try {
+            fireEvent(Event.DEACTIVATE, null);
+            context.stopService(intent);
+            isServiceRunning = false;
+            //Log.d(TAG, "Service stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop service: " + e.getMessage());
+        }
     }
 
     /**
-     * Fire vent with some parameters inside the web view.
+     * Fire event with some parameters inside the web view.
      *
      * @param event The name of the event
      * @param params Optional arguments for the event
