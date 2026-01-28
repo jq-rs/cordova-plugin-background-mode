@@ -195,7 +195,8 @@ private void setChannels(JSONObject channels) {
             editor.putString("gMyChannel" + channelName, channelData.optString("channel"));
             editor.putString("gMyChannelDec" + channelName, channelData.optString("channel_dec"));
             editor.putString("gAddrPortInput" + channelName, channelData.optString("server"));
-            editor.putString("gMsgChksum" + channelName, channelData.optString("msg_chksum"));
+            editor.putString("gMsgChksums" + channelName, channelData.optString("msg_chksums"));
+            //Log.d(TAG, "Channel data chksums: " + channelData.optString("msg_chksums"));
         }
 
         // Save active channels list

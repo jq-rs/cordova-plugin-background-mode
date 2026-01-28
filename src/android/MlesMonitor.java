@@ -17,6 +17,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.HashSet;
+import java.util.Set;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -303,9 +305,6 @@ public class MlesMonitor {
         connections.clear();
     }
 
-    /**
-     * Parse channels from JSON string passed via Intent
-     */
     private List<ChannelConfig> parseChannelsJson(String channelsJson) {
         List<ChannelConfig> channels = new ArrayList<>();
 
@@ -327,7 +326,7 @@ public class MlesMonitor {
                 String channel = data.optString("channel", null);
                 String channel_dec = data.optString("channel_dec", null);
                 String serverPort = data.optString("server", "mles.io:443");
-                String msgChksum = data.optString("msg_chksum", "0");
+                String msgChksums = data.optString("msg_chksums", "[]"); // Changed from msg_chksum to msg_chksums
 
                 if (userName == null || channel == null || userName.isEmpty() || channel.isEmpty()) {
                     //Log.w(TAG, "Skipping channel, missing data: " + channelName);
@@ -351,8 +350,8 @@ public class MlesMonitor {
                     }
                 }
 
-                //Log.d(TAG, "Parsed channel: " + channel + " channel_dec: " + channel_dec + " user: " + userName + " @ " + server + ":" + port + " chksum: " + msgChksum);
-                channels.add(new ChannelConfig(userName, channel, channel_dec, server, port, msgChksum));
+                //Log.d(TAG, "Parsed channel: " + channel + " channel_dec: " + channel_dec + " user: " + userName + " @ " + server + ":" + port + " chksums: " + msgChksums);
+                channels.add(new ChannelConfig(userName, channel, channel_dec, server, port, msgChksums));
             }
         } catch (Exception e) {
             Log.e(TAG, "Error parsing channels JSON", e);
@@ -370,27 +369,77 @@ public class MlesMonitor {
         String channelDecrypted;
         String server;
         int port;
-        String msgChksum;
+        String msgChksumsJson; // Store checksums as JSON string
+        private Set<String> checksumsCache;
+        private String latestChecksum;
 
-        ChannelConfig(String userName, String channelName, String channelDecrypted, String server, int port, String msgChksum) {
+        ChannelConfig(String userName, String channelName, String channelDecrypted, String server, int port, String msgChksumsJson) {
             this.userName = userName;
             this.channelName = channelName;
             this.channelDecrypted = channelDecrypted;
             this.server = server;
             this.port = port;
-            this.msgChksum = msgChksum;
+            this.msgChksumsJson = msgChksumsJson != null ? msgChksumsJson : "[]";
+            this.checksumsCache = new HashSet<>();
+
+            //Log.d(TAG, "ChannelConfig, msgChksumsJson: " + msgChksumsJson);
+
+            initChecksumsFromJson();
+        }
+
+        private void initChecksumsFromJson() {
+            try {
+                if (!msgChksumsJson.isEmpty() && !msgChksumsJson.equals("[]")) {
+                    org.json.JSONArray array = new org.json.JSONArray(msgChksumsJson);
+
+                    //Log.d(TAG, "Loaded " + array.length() + " checksums from JSON");
+                    for (int i = 0; i < array.length(); i++) {
+                        String chk = array.getString(i);
+                        checksumsCache.add(chk);
+                        latestChecksum = chk; // last item wins
+                    }
+                }
+                else {
+                    // Handle empty or invalid JSON string
+                    Log.w(TAG, "Empty or invalid checksums JSON");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing checksums JSON", e);
+            }
         }
 
         String getWsUrl() {
             return "wss://" + server + ":" + port;
         }
 
-        void setChksum(String msgChksum) {
-            this.msgChksum = msgChksum;
+        Set<String> getChksums() {
+            return checksumsCache;
         }
 
-        String getChksum() {
-            return this.msgChksum;
+        /**
+         * Get the latest (most recent) checksum
+         */
+        String getLatestChksum() {
+            return latestChecksum;
+        }
+
+        /**
+         * Check if a checksum exists in the array
+         */
+        boolean hasChksum(String checksum) {
+            if (checksum == null) {
+                return false;
+            }
+            return getChksums().contains(checksum);
+        }
+
+        /**
+         * Add a new checksum to the in-memory array (no persistence)
+         */
+        void addChksum(String checksum) {
+            if (checksum != null) {
+                getChksums().add(checksum);
+            }
         }
     }
 
@@ -401,8 +450,7 @@ public class MlesMonitor {
         List<ChannelConfig> channels = new ArrayList<>();
 
         try {
-            @SuppressWarnings("deprecation")
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_MULTI_PROCESS);
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             String activeChannelsJson = prefs.getString("gActiveChannelsJSON", null);
 
             if (activeChannelsJson == null || activeChannelsJson.isEmpty()) {
@@ -431,9 +479,6 @@ public class MlesMonitor {
         return channels;
     }
 
-    /**
-     * Save channels to cache for process restart recovery
-     */
     private void saveChannelsToCache(List<ChannelConfig> channels) {
         if (channels == null || channels.isEmpty()) {
             //Log.d(TAG, "No channels to save to cache");
@@ -453,7 +498,7 @@ public class MlesMonitor {
                 channelJson.put("channelDecrypted", config.channelDecrypted);
                 channelJson.put("server", config.server);
                 channelJson.put("port", config.port);
-                channelJson.put("msgChksum", config.msgChksum);
+                channelJson.put("msgChksumsJson", config.msgChksumsJson); // Changed from msgChksum
 
                 cacheJson.put(config.channelName, channelJson);
             }
@@ -468,9 +513,6 @@ public class MlesMonitor {
         }
     }
 
-    /**
-     * Load channels from cache (for process restart)
-     */
     private List<ChannelConfig> loadChannelsFromCache() {
         List<ChannelConfig> channels = new ArrayList<>();
 
@@ -497,10 +539,10 @@ public class MlesMonitor {
                 String channelDec = channelJson.optString("channelDecrypted", null);
                 String server = channelJson.optString("server", "mles.io");
                 int port = channelJson.optInt("port", 443);
-                String msgChksum = channelJson.optString("msgChksum", "0");
+                String msgChksumsJson = channelJson.optString("msgChksumsJson", "[]"); // Changed from msgChksum
 
                 if (userName != null && channel != null) {
-                    channels.add(new ChannelConfig(userName, channel, channelDec, server, port, msgChksum));
+                    channels.add(new ChannelConfig(userName, channel, channelDec, server, port, msgChksumsJson));
                     //Log.d(TAG, "Restored channel from cache: " + channel);
                 }
             }
@@ -530,41 +572,43 @@ public class MlesMonitor {
     /**
      * Load configuration for a specific channel
      */
-    private ChannelConfig loadChannelConfig(SharedPreferences prefs, String channelName) {
-        try {
-            String userName = prefs.getString("gMyName" + channelName, null);
-            String channel = prefs.getString("gMyChannel" + channelName, null);
-            String channelDec = prefs.getString("gMyChannelDec" + channelName, null);
-            String addrPort = prefs.getString("gAddrPortInput" + channelName, "mles.io:443");
-            String msgChksum = prefs.getString("gMsgChksum" + channelName, "0");
+     /**
+      * Load configuration for a specific channel
+      */
+     private ChannelConfig loadChannelConfig(SharedPreferences prefs, String channelName) {
+         try {
+             String userName = prefs.getString("gMyName" + channelName, null);
+             String channel = prefs.getString("gMyChannel" + channelName, null);
+             String channelDec = prefs.getString("gMyChannelDec" + channelName, null);
+             String addrPort = prefs.getString("gAddrPortInput" + channelName, "mles.io:443");
+             String msgChksums = prefs.getString("gMsgChksums" + channelName, "[]"); // Load array, default to empty array
 
-            //Log.d(TAG, "Channel " + channelName + ", Channel decrypted " + channelDec + ": name=" + userName + ", channel=" + channel + ", server=" + addrPort + ", chksum=" + msgChksum);
+             //Log.d(TAG, "Channel " + channelName + ", Channel decrypted " + channelDec + ": name=" + userName + ", channel=" + channel + ", server=" + addrPort + ", chksums=" + msgChksums);
 
-            // Parse server:port
-            String server = "mles.io";
-            int port = 443;
+             // Parse server:port
+             String server = "mles.io";
+             int port = 443;
+             if (addrPort != null && !addrPort.isEmpty()) {
+                 String[] parts = addrPort.split(":");
+                 if (parts.length >= 1 && !parts[0].isEmpty()) {
+                     server = parts[0];
+                 }
+                 if (parts.length >= 2) {
+                     try {
+                         port = Integer.parseInt(parts[1]);
+                     } catch (NumberFormatException e) {
+                         port = 443;
+                     }
+                 }
+             }
 
-            if (addrPort != null && !addrPort.isEmpty()) {
-                String[] parts = addrPort.split(":");
-                if (parts.length >= 1 && !parts[0].isEmpty()) {
-                    server = parts[0];
-                }
-                if (parts.length >= 2) {
-                    try {
-                        port = Integer.parseInt(parts[1]);
-                    } catch (NumberFormatException e) {
-                        port = 443;
-                    }
-                }
-            }
+             return new ChannelConfig(userName, channel, channelDec, server, port, msgChksums);
 
-            return new ChannelConfig(userName, channel, channelDec, server, port, msgChksum);
-
-        } catch (Exception e) {
-            //Log.e(TAG, "Error loading channel config: " + channelName, e);
-            return null;
-        }
-    }
+         } catch (Exception e) {
+             //Log.e(TAG, "Error loading channel config: " + channelName, e);
+             return null;
+         }
+     }
 
     /**
      * Connect to a channel via WebSocket
@@ -729,7 +773,7 @@ public class MlesMonitor {
     }
 
     /**
-     * Handle incoming message - sync first, then notify on new
+     * Handle incoming message - sync by matching latest checksum, check against all for duplicates
      */
     private void handleMessage(ByteString message, ChannelConfig config) {
         byte[] messageBytes = message.toByteArray();
@@ -737,25 +781,23 @@ public class MlesMonitor {
         // Compute SipHash with zero key
         long hash = SipHash.hash(SIPHASH_KEY, messageBytes);
         String hashHex = SipHash.toHexString(hash);
-
-        String lastChksum = config.getChksum();
-        //Log.d(TAG, "Last chksum for channel "+ config.channelName + ": " + lastChksum + ", got " + hashHex + " message: " + message);
         Boolean synced = channelSynced.get(config.channelName);
         long now = System.currentTimeMillis();
 
-        // Not synced yet - waiting for initial checksum match
+        // Not synced yet - waiting for latest checksum match
         if (synced == null || !synced) {
-            if (lastChksum == null || lastChksum.isEmpty() || lastChksum.equals("0")) {
+            String latestChksum = config.getLatestChksum();
+            if (latestChksum == null || latestChksum.isEmpty()) {
                 // No previous checksum - sync immediately
-                //Log.d(TAG, "No previous checksum for " + config.channelName + ", synced");
+                Log.d(TAG, "No previous checksum for " + config.channelName + ", synced");
                 channelSynced.put(config.channelName, true);
-                config.setChksum(hashHex);
+                config.addChksum(hashHex);
                 if (resyncListener != null) {
                     resyncListener.onResync(config.channelName);
                 }
-            } else if (lastChksum.equals(hashHex)) {
-                // Found the last known message - now synced
-                //Log.d(TAG, "Synced to last message on " + config.channelName);
+            } else if (latestChksum.equals(hashHex)) {
+                // Found the latest message - now synced
+                // Log.d(TAG, "Synced to last message on " + config.channelName);
                 channelSynced.put(config.channelName, true);
                 syncStartTime.remove(config.channelName);
                 if (resyncListener != null) {
@@ -770,9 +812,9 @@ public class MlesMonitor {
                     //Log.d(TAG, "Catching up on " + config.channelName + ", waiting for sync");
                 } else if (now - startTime > SYNC_TIMEOUT_MS) {
                     // Timeout - sync to latest
-                    //Log.d(TAG, "Sync timeout on " + config.channelName + ", syncing to latest");
+                    // Log.d(TAG, "Sync timeout on " + config.channelName + ", syncing to latest");
                     channelSynced.put(config.channelName, true);
-                    config.setChksum(hashHex);
+                    config.addChksum(hashHex);
                     syncStartTime.remove(config.channelName);
                     if (resyncListener != null) {
                         resyncListener.onResync(config.channelName);
@@ -785,14 +827,13 @@ public class MlesMonitor {
             return;
         }
 
-        // Already synced - check for new messages
-        if (lastChksum != null && lastChksum.equals(hashHex)) {
-            // Same message, ignore
+        if (config.hasChksum(hashHex)) {
+            // Already seen (original or resend), ignore
             return;
         }
 
         // New message!
-        config.setChksum(hashHex);
+        config.addChksum(hashHex);
         //Log.d(TAG, "New message on " + config.channelName + ", checksum: " + hashHex);
 
         if (listener != null) {
