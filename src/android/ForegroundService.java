@@ -162,6 +162,11 @@ public int onStartCommand(Intent intent, int flags, int startId) {
                 }
             }
         }
+    } else {
+        // Service was killed and restarted by Android (START_STICKY) — intent is null.
+        // Restart monitoring using the channel data the monitor saved to cache
+        // when it was last started.
+        startMlesMonitorFromCache();
     }
 
     return START_STICKY;
@@ -199,7 +204,36 @@ private void startMlesMonitorWithChannels(String channelsJson) {
     }
 }
 
+private void startMlesMonitorFromCache() {
+    stopMlesMonitor();
+
+    try {
+        MlesMonitor monitor = new MlesMonitor(getApplicationContext());
+        if (monitor.hasCachedChannels()) {
+            mlesMonitor = monitor;
+            mlesMonitor.setOnNewMessageListener((channel, fromUser) -> {
+                showNewMessageNotificationThrottled(channel);
+            });
+            mlesMonitor.setOnResyncListener((channelName) -> {
+                killMainUIProcess();
+            });
+            mlesMonitor.start();
+            Log.d(TAG, "MlesMonitor restarted from cache after process kill");
+        } else {
+            Log.d(TAG, "No cached channels available after process kill");
+        }
+    } catch (Exception e) {
+        Log.e(TAG, "Failed to restart MlesMonitor from cache", e);
+    }
+}
+
 private void killMainUIProcess() {
+    // Persist the current checksum state before killing so the cache is
+    // fresh if this service is subsequently killed and restarted by Android.
+    if (mlesMonitor != null) {
+        mlesMonitor.updateCache();
+    }
+
     try {
         ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         if (am == null) {

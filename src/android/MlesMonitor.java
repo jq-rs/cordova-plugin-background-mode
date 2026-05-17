@@ -434,11 +434,36 @@ public class MlesMonitor {
         }
 
         /**
-         * Add a new checksum to the in-memory array (no persistence)
+         * Add a new checksum to the in-memory set and update latestChecksum.
          */
         void addChksum(String checksum) {
             if (checksum != null) {
                 getChksums().add(checksum);
+                latestChecksum = checksum;
+            }
+        }
+
+        /**
+         * Serialize the current in-memory checksum set as a JSON array string,
+         * with latestChecksum as the final element so it is correctly restored
+         * as the sync target on the next start.
+         */
+        String getCurrentChecksumsJson() {
+            try {
+                org.json.JSONArray array = new org.json.JSONArray();
+                for (String chk : checksumsCache) {
+                    if (!chk.equals(latestChecksum)) {
+                        array.put(chk);
+                    }
+                }
+                // Put latestChecksum last so initChecksumsFromJson restores it correctly
+                if (latestChecksum != null) {
+                    array.put(latestChecksum);
+                }
+                return array.toString();
+            } catch (Exception e) {
+                Log.e(TAG, "Error serializing checksums", e);
+                return msgChksumsJson;
             }
         }
     }
@@ -498,7 +523,9 @@ public class MlesMonitor {
                 channelJson.put("channelDecrypted", config.channelDecrypted);
                 channelJson.put("server", config.server);
                 channelJson.put("port", config.port);
-                channelJson.put("msgChksumsJson", config.msgChksumsJson); // Changed from msgChksum
+                // Use current in-memory checksums so the cache reflects what
+                // was actually seen during this monitoring session
+                channelJson.put("msgChksumsJson", config.getCurrentChecksumsJson());
 
                 cacheJson.put(config.channelName, channelJson);
             }
@@ -511,6 +538,16 @@ public class MlesMonitor {
         } catch (Exception e) {
             Log.e(TAG, "Error saving channels to cache", e);
         }
+    }
+
+    /**
+     * Persist the current in-memory channel state (including all checksums seen
+     * during this monitoring session) to SharedPreferences. Call this before
+     * killing the main UI process so the cache is fresh if this service is
+     * subsequently killed and restarted by Android.
+     */
+    public void updateCache() {
+        saveChannelsToCache(activeChannels);
     }
 
     private List<ChannelConfig> loadChannelsFromCache() {
